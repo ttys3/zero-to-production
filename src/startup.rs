@@ -6,9 +6,11 @@ use crate::routes::{
 use actix_web::dev::Server;
 use actix_web::web::Data;
 use actix_web::{web, App, HttpServer};
+use anyhow::Context;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::net::TcpListener;
+use tera::Tera;
 use tracing_actix_web::TracingLogger;
 
 pub struct Application {
@@ -17,7 +19,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(configuration: Settings) -> Result<Self, std::io::Error> {
+    pub async fn build(configuration: Settings) -> Result<Self, anyhow::Error> {
         let connection_pool = get_connection_pool(&configuration.database)
             .await
             .expect("Failed to connect to Postgres.");
@@ -34,6 +36,9 @@ impl Application {
             timeout,
         );
 
+        let templates =
+            Tera::new("src/routes/**/*.html").context("Failed to load HTML templates")?;
+
         let address = format!(
             "{}:{}",
             configuration.application.host, configuration.application.port
@@ -45,6 +50,7 @@ impl Application {
             connection_pool,
             email_client,
             configuration.application.base_url,
+            templates,
         )?;
 
         Ok(Self { port, server })
@@ -73,10 +79,12 @@ fn run(
     db_pool: PgPool,
     email_client: EmailClient,
     base_url: String,
+    templates: Tera,
 ) -> Result<Server, std::io::Error> {
     let db_pool = Data::new(db_pool);
     let email_client = Data::new(email_client);
     let base_url = Data::new(ApplicationBaseUrl(base_url));
+    let templates = Data::new(templates);
     let server = HttpServer::new(move || {
         App::new()
             .wrap(TracingLogger::default())
@@ -90,6 +98,7 @@ fn run(
             .app_data(db_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
+            .app_data(templates.clone())
     })
     .listen(listener)?
     .run();
