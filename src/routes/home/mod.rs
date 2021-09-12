@@ -4,5 +4,5 @@ use actix_web::HttpResponse;
 pub async fn home() -> HttpResponse {
     HttpResponse::Ok()
         .content_type(ContentType::html())
-        .body(include_str!("../assets/home.html"))
+        .body(include_str!("home.html"))
 }

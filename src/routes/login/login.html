@@ -6,6 +6,9 @@
     </head>
     <body>
         <form action="login" method="post">
+            {% if auth_error %}
+                {{- auth_error -}}
+            {% endif %}
             <div>
                 <label>Username
                     <input type="text" placeholder="Enter Username" name="username" id="username" required />
