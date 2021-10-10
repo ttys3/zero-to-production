@@ -6,9 +6,11 @@
     </head>
     <body>
         <form action="login" method="post">
-            {% if auth_error %}
-                {{- auth_error -}}
-            {% endif %}
+            {% match auth_error %}
+            {% when Some with (error) %}
+            {{- error -}}
+            {% when None %}
+            {% endmatch %}
             <div>
                 <label>Username
                     <input type="text" placeholder="Enter Username" name="username" id="username" required />
