@@ -1,6 +1,8 @@
 use actix_web::http::header::ContentType;
-use actix_web::{web, HttpResponse};
+use actix_web::{HttpRequest, HttpResponse};
 use askama::Template;
+
+pub const AUTH_ERROR_COOKIE_NAME: &str = "auth_error";
 
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -8,15 +10,13 @@ struct HelloTemplate<'a> {
     auth_error: Option<&'a str>,
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
-pub struct QueryParams {
-    pub error_message: String,
-}
-
-pub async fn login_form(query: Option<web::Query<QueryParams>>) -> HttpResponse {
-    let auth_error = query.as_ref().map(|q| q.error_message.as_str());
+pub async fn login_form(request: HttpRequest) -> HttpResponse {
+    let cookie = request.cookie(AUTH_ERROR_COOKIE_NAME);
+    let auth_error = cookie.as_ref().map(|c| c.value());
     let body = HelloTemplate { auth_error }.render().unwrap();
-    HttpResponse::Ok()
-        .content_type(ContentType::html())
-        .body(body)
+    let mut response = HttpResponse::Ok();
+    if let Some(cookie) = cookie {
+        response.del_cookie(&cookie);
+    }
+    response.content_type(ContentType::html()).body(body)
 }
